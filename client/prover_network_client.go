@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/brevis-network/prover-network-gateway/client/serviceapi"
+	"github.com/brevis-network/prover-network-bidder/client/serviceapi"
 	"github.com/celer-network/goutils/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"

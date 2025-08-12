@@ -1,4 +1,4 @@
-module github.com/brevis-network/prover-network-gateway
+module github.com/brevis-network/prover-network-bidder
 
 go 1.23.0
 
