@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS my_bid (
     my_fee TEXT NOT NULL, -- can be overrided by changing bid_nonce
     bid_nonce TEXT NOT NULL,
     should_reveal_after BIGINT NOT NULL, -- unix in seconds
+    should_reveal_before BIGINT NOT NULL, -- unix in seconds
     revealed BOOLEAN NOT NULL DEFAULT FALSE,
     success BOOLEAN NOT NULL DEFAULT FALSE,
     proof_task_id TEXT NOT NULL DEFAULT '',

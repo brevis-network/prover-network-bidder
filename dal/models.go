@@ -16,16 +16,17 @@ type BidRule struct {
 }
 
 type MyBid struct {
-	ReqID             string `json:"req_id"`
-	MyFee             string `json:"my_fee"`
-	BidNonce          string `json:"bid_nonce"`
-	ShouldRevealAfter int64  `json:"should_reveal_after"`
-	Revealed          bool   `json:"revealed"`
-	Success           bool   `json:"success"`
-	ProofTaskID       string `json:"proof_task_id"`
-	ProofState        string `json:"proof_state"`
-	Proof             string `json:"proof"`
-	ProofSubmitTx     string `json:"proof_submit_tx"`
+	ReqID              string `json:"req_id"`
+	MyFee              string `json:"my_fee"`
+	BidNonce           string `json:"bid_nonce"`
+	ShouldRevealAfter  int64  `json:"should_reveal_after"`
+	ShouldRevealBefore int64  `json:"should_reveal_before"`
+	Revealed           bool   `json:"revealed"`
+	Success            bool   `json:"success"`
+	ProofTaskID        string `json:"proof_task_id"`
+	ProofState         string `json:"proof_state"`
+	Proof              string `json:"proof"`
+	ProofSubmitTx      string `json:"proof_submit_tx"`
 }
 
 type ProofRequest struct {
