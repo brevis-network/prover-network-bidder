@@ -158,6 +158,17 @@ func (q *Queries) UpdateAppAsRegistered(ctx context.Context, appID string) error
 	return err
 }
 
+const updateRequestAsProcessed = `-- name: UpdateRequestAsProcessed :exec
+UPDATE proof_request
+SET processed = true
+WHERE req_id = $1
+`
+
+func (q *Queries) UpdateRequestAsProcessed(ctx context.Context, reqID string) error {
+	_, err := q.db.ExecContext(ctx, updateRequestAsProcessed, reqID)
+	return err
+}
+
 const upsertMonitorBlock = `-- name: UpsertMonitorBlock :exec
 INSERT INTO monitor_block (event, block_num, block_idx, restart) 
 VALUES ($1, $2, $3, $4) ON CONFLICT (event) DO

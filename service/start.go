@@ -48,7 +48,10 @@ func Start() error {
 	if err != nil {
 		return fmt.Errorf("NewProverNetworkClient err: %w", err)
 	}
-	scheduler := scheduler.NewScheduler(db, chainClient, proverClient)
+	scheduler, err := scheduler.NewScheduler(db, chainClient, proverClient)
+	if err != nil {
+		return fmt.Errorf("NewScheduler err: %w", err)
+	}
 	scheduler.Start()
 
 	return nil

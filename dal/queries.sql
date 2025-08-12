@@ -31,3 +31,8 @@ WHERE app_id = $1;
 -- name: FindNotProcessedProofRequests :many
 SELECT * FROM proof_request
 WHERE processed = false;
+
+-- name: UpdateRequestAsProcessed :exec
+UPDATE proof_request
+SET processed = true
+WHERE req_id = $1;
