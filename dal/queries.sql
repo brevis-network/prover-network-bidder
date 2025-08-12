@@ -3,8 +3,8 @@ INSERT INTO app (app_id, img_url, registered )
 VALUES ($1, $2, $3) ON CONFLICT DO NOTHING;
 
 -- name: AddProofRequest :exec
-INSERT INTO proof_request (req_id, app_id, nonce, public_values_digest, input_data, input_url, max_fee, min_stake, deadline, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
+INSERT INTO proof_request (req_id, app_id, nonce, public_values_digest, input_data, input_url, max_fee, min_stake, deadline, created_at, processed)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
 
 -- name: SelectMonitorBlock :one
 SELECT * 
@@ -27,3 +27,7 @@ WHERE registered = false;
 UPDATE app
 SET registered = true
 WHERE app_id = $1;
+
+-- name: FindNotProcessedProofRequests :many
+SELECT * FROM proof_request
+WHERE processed = false;

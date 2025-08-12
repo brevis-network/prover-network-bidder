@@ -10,12 +10,6 @@ type App struct {
 	Registered bool   `json:"registered"`
 }
 
-type BidRule struct {
-	RuleID               string `json:"rule_id"`
-	BiddingPhaseDuration int64  `json:"bidding_phase_duration"`
-	RevealPhaseDuration  int64  `json:"reveal_phase_duration"`
-}
-
 type MonitorBlock struct {
 	Event    string `json:"event"`
 	BlockNum int64  `json:"block_num"`
@@ -48,4 +42,5 @@ type ProofRequest struct {
 	MinStake           string `json:"min_stake"`
 	Deadline           int64  `json:"deadline"`
 	CreatedAt          int64  `json:"created_at"`
+	Processed          bool   `json:"processed"`
 }

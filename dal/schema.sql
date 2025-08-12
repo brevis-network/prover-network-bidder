@@ -22,14 +22,8 @@ CREATE TABLE IF NOT EXISTS proof_request (
     min_stake TEXT NOT NULL,
     deadline BIGINT NOT NULL,
     created_at BIGINT NOT NULL, -- unix in seconds, blk timestamp
+    processed BOOLEAN NOT NULL DEFAULT FALSE,
     PRIMARY KEY (req_id)
-);
-
-CREATE TABLE IF NOT EXISTS bid_rule (
-    rule_id TEXT NOT NULL,
-    bidding_phase_duration BIGINT NOT NULL,
-    reveal_phase_duration BIGINT NOT NULL,
-    PRIMARY KEY (rule_id)
 );
 
 CREATE TABLE IF NOT EXISTS my_bid (

@@ -31,6 +31,8 @@ type ChainClient struct {
 	*mon2.Monitor
 	*dal.DAL
 	*eth.BrevisMarket
+
+	BiddingPhaseDuration, RevealPhaseDuration uint64
 }
 
 func NewChainClient(c *config.ChainConfig, db *dal.DAL) (*ChainClient, error) {
@@ -78,7 +80,16 @@ func NewChainClient(c *config.ChainConfig, db *dal.DAL) (*ChainClient, error) {
 		return nil, fmt.Errorf("NewBrevisMarket err: %w", err)
 	}
 
-	return &ChainClient{c, ec, transactor, mon, db, brevisMarket}, nil
+	biddingPhaseDuration, err := brevisMarket.BiddingPhaseDuration(nil)
+	if err != nil {
+		return nil, fmt.Errorf("BiddingPhaseDuration err: %w", err)
+	}
+	revealPhaseDuration, err := brevisMarket.RevealPhaseDuration(nil)
+	if err != nil {
+		return nil, fmt.Errorf("RevealPhaseDuration err: %w", err)
+	}
+
+	return &ChainClient{c, ec, transactor, mon, db, brevisMarket, biddingPhaseDuration, revealPhaseDuration}, nil
 }
 
 // funcs for monitor brevis events
@@ -148,6 +159,7 @@ func (c *ChainClient) handleNewRequest(eLog ethtypes.Log) {
 		MinStake:           ev.Req.Fee.MinStake.String(),
 		Deadline:           int64(ev.Req.Fee.Deadline),
 		CreatedAt:          int64(header.Time),
+		Processed:          false,
 	})
 	if err != nil {
 		log.Errorf("AddProofRequest err %s, reqId %x, req %+v", err, ev.Reqid, ev.Req)

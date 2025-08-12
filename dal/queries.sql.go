@@ -10,8 +10,8 @@ import (
 )
 
 const addProofRequest = `-- name: AddProofRequest :exec
-INSERT INTO proof_request (req_id, app_id, nonce, public_values_digest, input_data, input_url, max_fee, min_stake, deadline, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+INSERT INTO proof_request (req_id, app_id, nonce, public_values_digest, input_data, input_url, max_fee, min_stake, deadline, created_at, processed)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 `
 
 type AddProofRequestParams struct {
@@ -25,6 +25,7 @@ type AddProofRequestParams struct {
 	MinStake           string `json:"min_stake"`
 	Deadline           int64  `json:"deadline"`
 	CreatedAt          int64  `json:"created_at"`
+	Processed          bool   `json:"processed"`
 }
 
 func (q *Queries) AddProofRequest(ctx context.Context, arg AddProofRequestParams) error {
@@ -39,8 +40,49 @@ func (q *Queries) AddProofRequest(ctx context.Context, arg AddProofRequestParams
 		arg.MinStake,
 		arg.Deadline,
 		arg.CreatedAt,
+		arg.Processed,
 	)
 	return err
+}
+
+const findNotProcessedProofRequests = `-- name: FindNotProcessedProofRequests :many
+SELECT req_id, app_id, nonce, public_values_digest, input_data, input_url, max_fee, min_stake, deadline, created_at, processed FROM proof_request
+WHERE processed = false
+`
+
+func (q *Queries) FindNotProcessedProofRequests(ctx context.Context) ([]ProofRequest, error) {
+	rows, err := q.db.QueryContext(ctx, findNotProcessedProofRequests)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ProofRequest
+	for rows.Next() {
+		var i ProofRequest
+		if err := rows.Scan(
+			&i.ReqID,
+			&i.AppID,
+			&i.Nonce,
+			&i.PublicValuesDigest,
+			&i.InputData,
+			&i.InputUrl,
+			&i.MaxFee,
+			&i.MinStake,
+			&i.Deadline,
+			&i.CreatedAt,
+			&i.Processed,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const findNotRegisteredApps = `-- name: FindNotRegisteredApps :many
