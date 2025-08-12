@@ -8,4 +8,11 @@ type Config struct {
 	BidderEthAddr    string `mapstructure:"bidder_eth_addr"`
 	BidderKeystore   string `mapstructure:"bidder_keystore"`
 	BidderPassphrase string `mapstructure:"bidder_passphrase"`
+
+	MyBidRule MyBidRule `mapstructure:"my_bid_rule"`
+}
+
+// demo purpose, rule params to be determined by business
+type MyBidRule struct {
+	MaxFee string `mapstructure:"max_fee"`
 }
