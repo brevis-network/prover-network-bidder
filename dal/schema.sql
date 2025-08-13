@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS proof_request (
     PRIMARY KEY (req_id)
 );
 
+CREATE INDEX IF NOT EXISTS idx_processed ON proof_request (processed);
+
 CREATE TABLE IF NOT EXISTS my_bid (
     req_id TEXT NOT NULL,
     my_fee TEXT NOT NULL, -- can be overrided by changing bid_nonce
@@ -40,6 +42,10 @@ CREATE TABLE IF NOT EXISTS my_bid (
     proof_submit_tx TEXT NOT NULL DEFAULT '',
     PRIMARY KEY (req_id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_revealed ON my_bid (revealed);
+CREATE INDEX IF NOT EXISTS idx_bidresult_prooftaskid ON my_bid (bid_result, proof_task_id);
+CREATE INDEX IF NOT EXISTS idx_proofstate ON my_bid (proof_state);
 
 CREATE TABLE IF NOT EXISTS monitor_block (
     event TEXT NOT NULL,
