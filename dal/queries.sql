@@ -69,3 +69,13 @@ AND p.deadline > $1;
 -- name: UpdateBidProofTaskId :exec
 UPDATE my_bid
 SET proof_task_id = $1 AND proof_state = 'init';
+
+-- name: FindBidsToQueryProvingResult :many
+SELECT b.*, p.app_id FROM my_bid b
+INNER JOIN proof_request p
+ON b.req_id = p.req_id
+WHERE proof_state = 'init';
+
+-- name: UpdateBidWithProof :exec
+UPDATE my_bid
+SET proof = $1 AND proof_state = 'generated';

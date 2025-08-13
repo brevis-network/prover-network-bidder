@@ -69,6 +69,64 @@ func (q *Queries) AddProofRequest(ctx context.Context, arg AddProofRequestParams
 	return err
 }
 
+const findBidsToQueryProvingResult = `-- name: FindBidsToQueryProvingResult :many
+SELECT b.req_id, b.my_fee, b.bid_nonce, b.should_reveal_after, b.should_reveal_before, b.revealed, b.bid_result, b.proof_task_id, b.proof_state, b.proof, b.proof_submit_tx, p.app_id FROM my_bid b
+INNER JOIN proof_request p
+ON b.req_id = p.req_id
+WHERE proof_state = 'init'
+`
+
+type FindBidsToQueryProvingResultRow struct {
+	ReqID              string `json:"req_id"`
+	MyFee              string `json:"my_fee"`
+	BidNonce           string `json:"bid_nonce"`
+	ShouldRevealAfter  int64  `json:"should_reveal_after"`
+	ShouldRevealBefore int64  `json:"should_reveal_before"`
+	Revealed           bool   `json:"revealed"`
+	BidResult          string `json:"bid_result"`
+	ProofTaskID        string `json:"proof_task_id"`
+	ProofState         string `json:"proof_state"`
+	Proof              string `json:"proof"`
+	ProofSubmitTx      string `json:"proof_submit_tx"`
+	AppID              string `json:"app_id"`
+}
+
+func (q *Queries) FindBidsToQueryProvingResult(ctx context.Context) ([]FindBidsToQueryProvingResultRow, error) {
+	rows, err := q.db.QueryContext(ctx, findBidsToQueryProvingResult)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FindBidsToQueryProvingResultRow
+	for rows.Next() {
+		var i FindBidsToQueryProvingResultRow
+		if err := rows.Scan(
+			&i.ReqID,
+			&i.MyFee,
+			&i.BidNonce,
+			&i.ShouldRevealAfter,
+			&i.ShouldRevealBefore,
+			&i.Revealed,
+			&i.BidResult,
+			&i.ProofTaskID,
+			&i.ProofState,
+			&i.Proof,
+			&i.ProofSubmitTx,
+			&i.AppID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const findBidsWithoutResult = `-- name: FindBidsWithoutResult :many
 SELECT req_id, my_fee, bid_nonce, should_reveal_after, should_reveal_before, revealed, bid_result, proof_task_id, proof_state, proof, proof_submit_tx FROM my_bid
 WHERE bid_result = '' AND should_reveal_before < $1
@@ -359,6 +417,16 @@ type UpdateBidResultParams struct {
 
 func (q *Queries) UpdateBidResult(ctx context.Context, arg UpdateBidResultParams) error {
 	_, err := q.db.ExecContext(ctx, updateBidResult, arg.BidResult, arg.ReqID)
+	return err
+}
+
+const updateBidWithProof = `-- name: UpdateBidWithProof :exec
+UPDATE my_bid
+SET proof = $1 AND proof_state = 'generated'
+`
+
+func (q *Queries) UpdateBidWithProof(ctx context.Context, proof string) error {
+	_, err := q.db.ExecContext(ctx, updateBidWithProof, proof)
 	return err
 }
 

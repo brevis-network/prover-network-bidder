@@ -73,7 +73,7 @@ func (c *ProverNetworkClient) ProveTask(appId, taskId string, inputs [][]byte) e
 	return nil
 }
 
-func (c *ProverNetworkClient) GetProvingResult(appId, taskId string, inputs [][]byte) (proof []byte, err error) {
+func (c *ProverNetworkClient) GetProvingResult(appId, taskId string) (proof []byte, err error) {
 	resp, err := serviceapi.NewProverNetworkClient(c.conn).GetProvingResult(context.Background(), &serviceapi.GetProvingResultRequest{
 		AppId:  appId,
 		TaskId: taskId,

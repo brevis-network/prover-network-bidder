@@ -41,6 +41,7 @@ func (s *Scheduler) Start() {
 	go s.scheduleReveal()
 	go s.scheduleQueryBidResult()
 	go s.scheduleProve()
+	go s.scheduleQueryProvingResult()
 }
 
 func (s *Scheduler) scheduleAppRegister() {
@@ -244,6 +245,28 @@ func (s *Scheduler) scheduleProve() {
 			err = s.UpdateBidProofTaskId(context.Background(), bid.ReqID) // use reqId as proofTaskId
 			if err != nil {
 				log.Errorf("UpdateBidProofTaskId %s err: %s", bid.ReqID, err)
+			}
+		}
+	}
+}
+
+func (s *Scheduler) scheduleQueryProvingResult() {
+	for {
+		time.Sleep(5 * time.Second)
+		bids, err := s.FindBidsToQueryProvingResult(context.Background())
+		if err != nil {
+			log.Errorf("FindBidsToQueryProvingResult err: %s", err)
+			continue
+		}
+		for _, bid := range bids {
+			proof, err := s.GetProvingResult(bid.AppID, bid.ProofTaskID)
+			if err != nil {
+				log.Errorf("GetProvingResult %s err: %s", bid.ReqID, err)
+				continue
+			}
+			err = s.UpdateBidWithProof(context.Background(), common.Bytes2Hex(proof))
+			if err != nil {
+				log.Errorf("UpdateBidWithProof %s err: %s", bid.ReqID, err)
 			}
 		}
 	}
