@@ -127,6 +127,46 @@ func (q *Queries) FindBidsToQueryProvingResult(ctx context.Context) ([]FindBidsT
 	return items, nil
 }
 
+const findBidsToSubmitProof = `-- name: FindBidsToSubmitProof :many
+SELECT req_id, my_fee, bid_nonce, should_reveal_after, should_reveal_before, revealed, bid_result, proof_task_id, proof_state, proof, proof_submit_tx FROM my_bid
+WHERE proof_state = 'generated'
+`
+
+func (q *Queries) FindBidsToSubmitProof(ctx context.Context) ([]MyBid, error) {
+	rows, err := q.db.QueryContext(ctx, findBidsToSubmitProof)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []MyBid
+	for rows.Next() {
+		var i MyBid
+		if err := rows.Scan(
+			&i.ReqID,
+			&i.MyFee,
+			&i.BidNonce,
+			&i.ShouldRevealAfter,
+			&i.ShouldRevealBefore,
+			&i.Revealed,
+			&i.BidResult,
+			&i.ProofTaskID,
+			&i.ProofState,
+			&i.Proof,
+			&i.ProofSubmitTx,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const findBidsWithoutResult = `-- name: FindBidsWithoutResult :many
 SELECT req_id, my_fee, bid_nonce, should_reveal_after, should_reveal_before, revealed, bid_result, proof_task_id, proof_state, proof, proof_submit_tx FROM my_bid
 WHERE bid_result = '' AND should_reveal_before < $1
@@ -383,6 +423,22 @@ func (q *Queries) UpdateAppAsRegistered(ctx context.Context, appID string) error
 	return err
 }
 
+const updateBidAsProofSubmitted = `-- name: UpdateBidAsProofSubmitted :exec
+UPDATE my_bid
+SET proof_state = 'submitted' AND proof_submit_tx = $1
+WHERE req_id = $2
+`
+
+type UpdateBidAsProofSubmittedParams struct {
+	ProofSubmitTx string `json:"proof_submit_tx"`
+	ReqID         string `json:"req_id"`
+}
+
+func (q *Queries) UpdateBidAsProofSubmitted(ctx context.Context, arg UpdateBidAsProofSubmittedParams) error {
+	_, err := q.db.ExecContext(ctx, updateBidAsProofSubmitted, arg.ProofSubmitTx, arg.ReqID)
+	return err
+}
+
 const updateBidAsRevealed = `-- name: UpdateBidAsRevealed :exec
 UPDATE my_bid
 SET revealed = true
@@ -397,10 +453,16 @@ func (q *Queries) UpdateBidAsRevealed(ctx context.Context, reqID string) error {
 const updateBidProofTaskId = `-- name: UpdateBidProofTaskId :exec
 UPDATE my_bid
 SET proof_task_id = $1 AND proof_state = 'init'
+WHERE req_id = $2
 `
 
-func (q *Queries) UpdateBidProofTaskId(ctx context.Context, proofTaskID string) error {
-	_, err := q.db.ExecContext(ctx, updateBidProofTaskId, proofTaskID)
+type UpdateBidProofTaskIdParams struct {
+	ProofTaskID string `json:"proof_task_id"`
+	ReqID       string `json:"req_id"`
+}
+
+func (q *Queries) UpdateBidProofTaskId(ctx context.Context, arg UpdateBidProofTaskIdParams) error {
+	_, err := q.db.ExecContext(ctx, updateBidProofTaskId, arg.ProofTaskID, arg.ReqID)
 	return err
 }
 
@@ -423,10 +485,16 @@ func (q *Queries) UpdateBidResult(ctx context.Context, arg UpdateBidResultParams
 const updateBidWithProof = `-- name: UpdateBidWithProof :exec
 UPDATE my_bid
 SET proof = $1 AND proof_state = 'generated'
+WHERE req_id = $2
 `
 
-func (q *Queries) UpdateBidWithProof(ctx context.Context, proof string) error {
-	_, err := q.db.ExecContext(ctx, updateBidWithProof, proof)
+type UpdateBidWithProofParams struct {
+	Proof string `json:"proof"`
+	ReqID string `json:"req_id"`
+}
+
+func (q *Queries) UpdateBidWithProof(ctx context.Context, arg UpdateBidWithProofParams) error {
+	_, err := q.db.ExecContext(ctx, updateBidWithProof, arg.Proof, arg.ReqID)
 	return err
 }
 

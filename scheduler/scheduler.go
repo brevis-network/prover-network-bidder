@@ -42,6 +42,7 @@ func (s *Scheduler) Start() {
 	go s.scheduleQueryBidResult()
 	go s.scheduleProve()
 	go s.scheduleQueryProvingResult()
+	go s.scheduleSubmitProof()
 }
 
 func (s *Scheduler) scheduleAppRegister() {
@@ -242,7 +243,10 @@ func (s *Scheduler) scheduleProve() {
 				log.Errorf("ProveTask %s err: %s", bid.ReqID, err)
 				continue
 			}
-			err = s.UpdateBidProofTaskId(context.Background(), bid.ReqID) // use reqId as proofTaskId
+			err = s.UpdateBidProofTaskId(context.Background(), dal.UpdateBidProofTaskIdParams{
+				ProofTaskID: bid.ReqID,
+				ReqID:       bid.ReqID,
+			}) // use reqId as proofTaskId
 			if err != nil {
 				log.Errorf("UpdateBidProofTaskId %s err: %s", bid.ReqID, err)
 			}
@@ -264,9 +268,51 @@ func (s *Scheduler) scheduleQueryProvingResult() {
 				log.Errorf("GetProvingResult %s err: %s", bid.ReqID, err)
 				continue
 			}
-			err = s.UpdateBidWithProof(context.Background(), common.Bytes2Hex(proof))
+			err = s.UpdateBidWithProof(context.Background(), dal.UpdateBidWithProofParams{
+				Proof: common.Bytes2Hex(proof),
+				ReqID: bid.ReqID,
+			})
 			if err != nil {
 				log.Errorf("UpdateBidWithProof %s err: %s", bid.ReqID, err)
+			}
+		}
+	}
+}
+
+func (s *Scheduler) scheduleSubmitProof() {
+	for {
+		time.Sleep(5 * time.Second)
+		bids, err := s.FindBidsToSubmitProof(context.Background())
+		if err != nil {
+			log.Errorf("FindBidsToSubmitProof err: %s", err)
+			continue
+		}
+		for _, bid := range bids {
+			var proof [8]*big.Int
+			proofBytes := common.Hex2Bytes(bid.Proof)
+			if len(proofBytes) != 8*32 {
+				log.Errorf("invalid proof length, reqId %s", bid.ReqID)
+				continue
+			}
+			for i := 0; i < 8; i++ {
+				proof[i] = big.NewInt(0).SetBytes(proofBytes[32*i : 32*(i+1)])
+			}
+			tx, _, err := onchain.TransactWaitSuccess(
+				s.Client, s.TransactOpts,
+				func(transactor bind.ContractTransactor, opts *bind.TransactOpts) (*ethtypes.Transaction, error) {
+					return s.SubmitProof(opts, common.HexToHash(bid.ReqID), proof)
+				})
+			if err != nil {
+				log.Errorf("SubmitProof err: %s", err)
+				continue
+			}
+			log.Infof("SubmitProof tx %s", tx.Hash().Hex())
+			err = s.UpdateBidAsProofSubmitted(context.Background(), dal.UpdateBidAsProofSubmittedParams{
+				ProofSubmitTx: tx.Hash().Hex(),
+				ReqID:         bid.ReqID,
+			})
+			if err != nil {
+				log.Errorf("UpdateBidAsProofSubmitted %s err: %s", bid.ReqID, err)
 			}
 		}
 	}
