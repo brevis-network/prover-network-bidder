@@ -49,3 +49,12 @@ WHERE revealed = false AND ($1 BETWEEN should_reveal_after AND should_reveal_bef
 UPDATE my_bid
 SET revealed = true
 WHERE req_id = $1;
+
+-- name: FindBidWithoutResult :many
+SELECT * FROM my_bid
+WHERE bid_result = '' AND should_reveal_before < $1;
+
+-- name: UpdateBidResult :exec
+UPDATE my_bid
+SET bid_result = $1
+WHERE req_id = $2;

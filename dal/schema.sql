@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS my_bid (
     should_reveal_after BIGINT NOT NULL, -- unix in seconds
     should_reveal_before BIGINT NOT NULL, -- unix in seconds
     revealed BOOLEAN NOT NULL DEFAULT FALSE,
-    success BOOLEAN NOT NULL DEFAULT FALSE,
+    bid_result TEXT NOT NULL DEFAULT '', -- '', 'success', 'fail' 
     proof_task_id TEXT NOT NULL DEFAULT '',
     proof_state TEXT NOT NULL DEFAULT '', -- init, generated, submitted
     proof TEXT NOT NULL DEFAULT '',

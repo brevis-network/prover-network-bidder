@@ -24,7 +24,7 @@ type MyBid struct {
 	ShouldRevealAfter  int64  `json:"should_reveal_after"`
 	ShouldRevealBefore int64  `json:"should_reveal_before"`
 	Revealed           bool   `json:"revealed"`
-	Success            bool   `json:"success"`
+	BidResult          string `json:"bid_result"`
 	ProofTaskID        string `json:"proof_task_id"`
 	ProofState         string `json:"proof_state"`
 	Proof              string `json:"proof"`

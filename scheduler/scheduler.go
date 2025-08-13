@@ -39,6 +39,7 @@ func (s *Scheduler) Start() {
 	go s.scheduleAppRegister()
 	go s.scheduleBid()
 	go s.scheduleReveal()
+	go s.scheduleQueryBidResult()
 	go s.scheduleProve()
 }
 
@@ -174,6 +175,43 @@ func (s *Scheduler) scheduleReveal() {
 			err = s.UpdateBidAsRevealed(context.Background(), bid.ReqID)
 			if err != nil {
 				log.Errorf("UpdateBidAsRevealed %s err: %s", bid.ReqID, err)
+			}
+		}
+	}
+}
+
+type BidResult string
+
+const (
+	Success BidResult = "success"
+	Fail    BidResult = "fail"
+)
+
+func (s *Scheduler) scheduleQueryBidResult() {
+	for {
+		time.Sleep(5 * time.Second)
+		bids, err := s.FindBidWithoutResult(context.Background(), time.Now().Unix())
+		if err != nil {
+			log.Errorf("FindBidWithoutResult err: %s", err)
+			continue
+		}
+		for _, bid := range bids {
+			reqState, err := s.Requests(nil, common.HexToHash(bid.ReqID))
+			if err != nil {
+				log.Errorf("Requests err: %s", err)
+				continue
+			}
+
+			result := Fail
+			if reqState.Bidder0.Prover == common.HexToAddress(s.BidderEthAddr) {
+				result = Success
+			}
+			err = s.UpdateBidResult(context.Background(), dal.UpdateBidResultParams{
+				BidResult: string(result),
+				ReqID:     bid.ReqID,
+			})
+			if err != nil {
+				log.Errorf("UpdateBidResult %s err: %s", bid.ReqID, err)
 			}
 		}
 	}
