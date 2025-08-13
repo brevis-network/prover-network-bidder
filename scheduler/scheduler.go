@@ -3,6 +3,8 @@ package scheduler
 import (
 	"context"
 	"fmt"
+	"math/big"
+	"strings"
 	"time"
 
 	"github.com/brevis-network/prover-network-bidder/client"
@@ -10,7 +12,10 @@ import (
 	"github.com/brevis-network/prover-network-bidder/dal"
 	"github.com/brevis-network/prover-network-bidder/onchain"
 	"github.com/celer-network/goutils/log"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	solsha3 "github.com/miguelmota/go-solidity-sha3"
 	"github.com/spf13/viper"
 )
 
@@ -73,7 +78,7 @@ func (s *Scheduler) scheduleBid() {
 		var inputs [][]byte
 		// TODO: get inputs from req.InputData or req.InputUrl
 		for _, req := range reqs {
-			_, pvDigest, err := s.EstimateCost(req.AppID, inputs)
+			cost, pvDigest, err := s.EstimateCost(req.AppID, inputs)
 			if err != nil {
 				log.Errorf("EstimateCost %s err: %s", req.ReqID, err)
 				continue
@@ -86,12 +91,59 @@ func (s *Scheduler) scheduleBid() {
 				}
 				continue
 			}
-			// TODO compare cost with rule
-			// TODO submit bid if pass rule
 
+			// compare cost to rule, demo logic, subject to be changed later
+			// TODO
+			myFee := big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(int64(cost)))
+			maxFee, _ := big.NewInt(0).SetString(s.ruleConfig.MaxFee, 0)
+
+			if myFee.Cmp(maxFee) == 1 {
+				log.Infof("fee exceeds my rule, myFee %s, maxFee in rule %s", myFee.String(), maxFee.String())
+				err = s.UpdateRequestAsProcessed(context.Background(), req.ReqID)
+				if err != nil {
+					log.Errorf("UpdateRequestAsProcessed %s err: %s", req.ReqID, err)
+				}
+				continue
+			}
+
+			// submit bid if pass rule
+			nonce := big.NewInt(time.Now().Unix())
+			bidHash := solsha3.SoliditySHA3(
+				[]string{"uint256", "uint256"},
+				[]interface{}{myFee, nonce},
+			)
+			tx, _, err := onchain.TransactWaitSuccess(
+				s.Client, s.TransactOpts,
+				func(transactor bind.ContractTransactor, opts *bind.TransactOpts) (*ethtypes.Transaction, error) {
+					return s.Bid(opts, common.HexToHash(req.ReqID), common.BytesToHash(bidHash))
+				})
+			if err != nil {
+				log.Errorf("Bid err: %s", err)
+				if strings.Contains(err.Error(), "bidding phase ended") || strings.Contains(err.Error(), "request does not exist") {
+					err = s.UpdateRequestAsProcessed(context.Background(), req.ReqID)
+					if err != nil {
+						log.Errorf("UpdateRequestAsProcessed %s err: %s", req.ReqID, err)
+					}
+				}
+				continue
+			}
+			log.Infof("Bid tx %s", tx.Hash().Hex())
 			err = s.UpdateRequestAsProcessed(context.Background(), req.ReqID)
 			if err != nil {
 				log.Errorf("UpdateRequestAsProcessed %s err: %s", req.ReqID, err)
+			}
+
+			shouldRevealAfter := req.CreatedAt + int64(s.BiddingPhaseDuration)
+			shouldRevealBefore := shouldRevealAfter + int64(s.RevealPhaseDuration)
+			err = s.AddBid(context.Background(), dal.AddBidParams{
+				ReqID:              req.ReqID,
+				MyFee:              myFee.String(),
+				BidNonce:           nonce.String(),
+				ShouldRevealAfter:  shouldRevealAfter,
+				ShouldRevealBefore: shouldRevealBefore,
+			})
+			if err != nil {
+				log.Errorf("AddBid %s err: %s", req.ReqID, err)
 			}
 		}
 	}
@@ -99,7 +151,6 @@ func (s *Scheduler) scheduleBid() {
 
 func (s *Scheduler) scheduleProve() {
 	for {
-
 		time.Sleep(5 * time.Second)
 		// TODO
 	}

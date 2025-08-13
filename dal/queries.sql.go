@@ -9,6 +9,30 @@ import (
 	"context"
 )
 
+const addBid = `-- name: AddBid :exec
+INSERT INTO my_bid (req_id, my_fee, bid_nonce, should_reveal_after, should_reveal_before)
+VALUES ($1, $2, $3, $4, $5)
+`
+
+type AddBidParams struct {
+	ReqID              string `json:"req_id"`
+	MyFee              string `json:"my_fee"`
+	BidNonce           string `json:"bid_nonce"`
+	ShouldRevealAfter  int64  `json:"should_reveal_after"`
+	ShouldRevealBefore int64  `json:"should_reveal_before"`
+}
+
+func (q *Queries) AddBid(ctx context.Context, arg AddBidParams) error {
+	_, err := q.db.ExecContext(ctx, addBid,
+		arg.ReqID,
+		arg.MyFee,
+		arg.BidNonce,
+		arg.ShouldRevealAfter,
+		arg.ShouldRevealBefore,
+	)
+	return err
+}
+
 const addProofRequest = `-- name: AddProofRequest :exec
 INSERT INTO proof_request (req_id, app_id, nonce, public_values_digest, input_data, input_url, max_fee, min_stake, deadline, created_at, processed)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)

@@ -36,3 +36,7 @@ WHERE processed = false;
 UPDATE proof_request
 SET processed = true
 WHERE req_id = $1;
+
+-- name: AddBid :exec
+INSERT INTO my_bid (req_id, my_fee, bid_nonce, should_reveal_after, should_reveal_before)
+VALUES ($1, $2, $3, $4, $5);

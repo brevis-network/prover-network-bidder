@@ -2,23 +2,18 @@ package onchain
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
 	"math/big"
-	"os"
-	"strings"
 	"time"
 
 	"github.com/brevis-network/prover-network-bidder/config"
 	"github.com/brevis-network/prover-network-bidder/dal"
 	"github.com/brevis-network/prover-network-bidder/eth"
-	ethutils "github.com/celer-network/goutils/eth"
 	"github.com/celer-network/goutils/eth/mon2"
 	"github.com/celer-network/goutils/log"
-	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
@@ -27,7 +22,7 @@ var ZeroAddr common.Address
 type ChainClient struct {
 	*config.ChainConfig
 	*ethclient.Client
-	*ethutils.Transactor
+	*bind.TransactOpts
 	*mon2.Monitor
 	*dal.DAL
 	*eth.BrevisMarket
@@ -48,24 +43,13 @@ func NewChainClient(c *config.ChainConfig, db *dal.DAL) (*ChainClient, error) {
 		return nil, fmt.Errorf("chainid mismatch! cfg has %d but onchain has %d", c.ChainID, chid.Uint64())
 	}
 
-	bidder, addr, err := createSigner(c.BidderEthAddr, c.BidderKeystore, chid)
+	auth, addr, err := CreateTransactOpts(c.BidderEthAddr, c.BidderKeystore, chid)
 	if err != nil {
-		return nil, fmt.Errorf("CreateSigner err: %w", err)
+		return nil, fmt.Errorf("CreateTransactOpts err: %w", err)
 	}
 	if addr != common.HexToAddress(c.BidderEthAddr) {
 		return nil, fmt.Errorf("bidder eth addr mismatch! cfg as %s but %s from keystore", c.BidderEthAddr, addr.String())
 	}
-	transactor := ethutils.NewTransactorByExternalSigner(
-		addr,
-		bidder,
-		ec,
-		big.NewInt(int64(c.ChainID)),
-		ethutils.WithBlockDelay(c.BlkDelay),
-		ethutils.WithPollingInterval(time.Duration(c.BlkInterval)*time.Second),
-		ethutils.WithAddGasEstimateRatio(c.AddGasEstimateRatio),
-		ethutils.WithMaxFeePerGasGwei(c.MaxFeePerGasGwei),
-		ethutils.WithMaxPriorityFeePerGasGwei(float64(c.MaxPriorityFeePerGasGwei)),
-	)
 	mon, err := mon2.NewMonitor(ec, db, mon2.PerChainCfg{
 		BlkIntv:         time.Duration(c.BlkInterval) * time.Second,
 		BlkDelay:        c.BlkDelay,
@@ -89,7 +73,7 @@ func NewChainClient(c *config.ChainConfig, db *dal.DAL) (*ChainClient, error) {
 		return nil, fmt.Errorf("RevealPhaseDuration err: %w", err)
 	}
 
-	return &ChainClient{c, ec, transactor, mon, db, brevisMarket, biddingPhaseDuration, revealPhaseDuration}, nil
+	return &ChainClient{c, ec, auth, mon, db, brevisMarket, biddingPhaseDuration, revealPhaseDuration}, nil
 }
 
 // funcs for monitor brevis events
@@ -164,37 +148,4 @@ func (c *ChainClient) handleNewRequest(eLog ethtypes.Log) {
 	if err != nil {
 		log.Errorf("AddProofRequest err %s, reqId %x, req %+v", err, ev.Reqid, ev.Req)
 	}
-}
-
-const awskmsPre = "awskms"
-
-func createSigner(ksfile, passphrase string, chainid *big.Int) (ethutils.Signer, common.Address, error) {
-	if strings.HasPrefix(ksfile, awskmsPre) {
-		kmskeyinfo := strings.SplitN(ksfile, ":", 3)
-		if len(kmskeyinfo) != 3 {
-			return nil, ZeroAddr, fmt.Errorf("%s has wrong format", ksfile)
-		}
-		awskeysec := []string{"", ""}
-		if passphrase != "" {
-			awskeysec = strings.SplitN(passphrase, ":", 2)
-			if len(awskeysec) != 2 {
-				return nil, ZeroAddr, fmt.Errorf("%s has wrong format", passphrase)
-			}
-		}
-		kmsSigner, err := ethutils.NewKmsSigner(kmskeyinfo[1], kmskeyinfo[2], awskeysec[0], awskeysec[1], chainid)
-		if err != nil {
-			return nil, ZeroAddr, err
-		}
-		return kmsSigner, kmsSigner.Addr, nil
-	}
-	ksBytes, err := os.ReadFile(ksfile)
-	if err != nil {
-		return nil, ZeroAddr, err
-	}
-	key, err := keystore.DecryptKey(ksBytes, passphrase)
-	if err != nil {
-		return nil, ZeroAddr, err
-	}
-	signer, err := ethutils.NewSigner(hex.EncodeToString(crypto.FromECDSA(key.PrivateKey)), chainid)
-	return signer, key.Address, err
 }
