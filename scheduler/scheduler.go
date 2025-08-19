@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"math/rand"
 	"strings"
 	"time"
 
@@ -111,7 +112,7 @@ func (s *Scheduler) scheduleBid() {
 			}
 
 			// submit bid if pass rule
-			nonce := big.NewInt(time.Now().Unix())
+			nonce := big.NewInt(int64(rand.Uint64()))
 			bidHash := solsha3.SoliditySHA3(
 				[]string{"uint256", "uint256"},
 				[]interface{}{myFee, nonce},
