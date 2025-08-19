@@ -9,12 +9,15 @@ type ChainConfig struct {
 	ForwardBlkDelay  uint64 `mapstructure:"forward_blk_delay"`
 	BrevisMarketAddr string `mapstructure:"brevis_market_addr"`
 
-	BidderEthAddr    string `mapstructure:"bidder_eth_addr"`
-	BidderKeystore   string `mapstructure:"bidder_keystore"`
-	BidderPassphrase string `mapstructure:"bidder_passphrase"`
+	ProverEthAddr       string `mapstructure:"prover_eth_addr"`
+	SubmitterKeystore   string `mapstructure:"submitter_keystore"`
+	SubmitterPassphrase string `mapstructure:"submitter_passphrase"`
 }
 
 // demo purpose, rule params to be determined by business
 type RuleConfig struct {
-	MaxFee string `mapstructure:"max_fee"`
+	ProverGasPrice string `mapstructure:"prover_gas_price"` // prove cycle * prover gas price = estimated cost
+	MaxFee         string `mapstructure:"max_fee"`
+	// max input size,  default 0 means no limit. if this value is non-zero, and request input is larger, skip request.
+	MaxInputSize uint64 `mapstructure:"max_input_size"`
 }

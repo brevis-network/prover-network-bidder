@@ -26,23 +26,23 @@ func NewProverNetworkClient(nodeUrl string) (*ProverNetworkClient, error) {
 	return mc, nil
 }
 
-func (c *ProverNetworkClient) RegisterApp(appId, info string, elf []byte) error {
+func (c *ProverNetworkClient) RegisterApp(info string, elf []byte) (string, error) {
 	resp, err := serviceapi.NewProverNetworkClient(c.conn).RegisterApp(context.Background(), &serviceapi.RegisterAppRequest{
-		AppId: appId,
-		Elf:   elf,
-		Info:  &info,
+		Elf:  elf,
+		Info: &info,
 	})
 	if err != nil {
-		return err
+		return "", err
 	}
 	if resp.GetErr() != nil {
 		log.Errorf("RegisterApp err: %s", resp.GetErr().GetMsg())
-		return fmt.Errorf("RegisterApp err: %s", resp.GetErr().GetMsg())
+		return "", fmt.Errorf("RegisterApp err: %s", resp.GetErr().GetMsg())
 	}
-	return nil
+
+	return resp.AppId, nil
 }
 
-func (c *ProverNetworkClient) EstimateCost(appId string, inputs [][]byte) (cost uint32, pvDigest []byte, err error) {
+func (c *ProverNetworkClient) EstimateCost(appId string, inputs []byte) (cost uint64, pvDigest []byte, err error) {
 	resp, err := serviceapi.NewProverNetworkClient(c.conn).EstimateCost(context.Background(), &serviceapi.EstimateCostRequest{
 		AppId:  appId,
 		Inputs: inputs,
@@ -57,7 +57,7 @@ func (c *ProverNetworkClient) EstimateCost(appId string, inputs [][]byte) (cost 
 	return resp.Cost, resp.PvDigest, nil
 }
 
-func (c *ProverNetworkClient) ProveTask(appId, taskId string, inputs [][]byte) error {
+func (c *ProverNetworkClient) ProveTask(appId, taskId string, inputs []byte) error {
 	resp, err := serviceapi.NewProverNetworkClient(c.conn).ProveTask(context.Background(), &serviceapi.ProveTaskRequest{
 		AppId:  appId,
 		TaskId: taskId,

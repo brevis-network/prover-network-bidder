@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/celer-network/goutils/log"
 	"github.com/cockroachdb/cockroach-go/v2/crdb"
 	_ "github.com/lib/pq"
 )
@@ -89,18 +90,23 @@ func ChkQueryRow(err error) (bool, error) {
 }
 
 func (db *DAL) SetMonitorBlock(event string, blockNum uint64, blockIdx int64) error {
-	return db.UpsertMonitorBlock(context.Background(), UpsertMonitorBlockParams{
+	err := db.UpsertMonitorBlock(context.Background(), UpsertMonitorBlockParams{
 		Event:    event,
 		BlockNum: int64(blockNum),
 		BlockIdx: blockIdx,
 		Restart:  false,
 	})
+	if err != nil {
+		log.Errorf("UpsertMonitorBlock err %s", err)
+	}
+	return err
 }
 
 func (db *DAL) GetMonitorBlock(event string) (blknum uint64, blkidx int64, found bool, err error) {
 	o, err := db.SelectMonitorBlock(context.Background(), event)
 	found, err = ChkQueryRow(err)
 	if err != nil {
+		log.Errorf("SelectMonitorBlock err %s", err)
 		return 0, 0, false, err
 	}
 	if !found {

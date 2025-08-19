@@ -1,8 +1,5 @@
 syntax = "proto3";
 
-import "google/protobuf/duration.proto";
-import "google/protobuf/empty.proto";
-
 package prover_network;
 
 option go_package = "github.com/brevis-network/prover-network-gateway/client/serviceapi";
@@ -40,31 +37,31 @@ enum ErrCode {
 }
 
 message RegisterAppRequest {
-  // application hash
-  string app_id = 1;
   // program elf data
-  bytes elf = 2;
+  bytes elf = 1;
   // optional program information
-  optional string info = 3;
+  optional string info = 2;
 }
 
 message RegisterAppResponse {
   // common result
   ErrMsg err = 1;
+  // application hash
+  string app_id = 2;
 }
 
 message EstimateCostRequest {
   // application hash
   string app_id = 1;
   // input array, empty if no inputs
-  repeated bytes inputs = 2;
+  bytes inputs = 2;
 }
 
 message EstimateCostResponse {
   // common result
   ErrMsg err = 1;
   // gas cost
-  uint32 cost = 2;
+  uint64 cost = 2;
   // public values digest
   bytes pv_digest = 3;
 }
@@ -75,7 +72,7 @@ message ProveTaskRequest {
   // proving task ID, it should be unique for this application
   string task_id = 2;
   // input array, empty if no inputs
-  repeated bytes inputs = 3;
+  bytes inputs = 3;
 }
 
 message ProveTaskResponse {

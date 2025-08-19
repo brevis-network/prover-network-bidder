@@ -1,8 +1,11 @@
 package service
 
 import (
+	"context"
 	"flag"
 	"fmt"
+	"os/signal"
+	"syscall"
 
 	"github.com/brevis-network/prover-network-bidder/client"
 	"github.com/brevis-network/prover-network-bidder/config"
@@ -25,23 +28,24 @@ func Start() error {
 	}
 
 	// setup db
-	dbName := viper.GetString(config.KeyDb)
-	db, err := dal.NewDAL(dbName)
+	dbUrl := viper.GetString(config.KeyDb)
+	db, err := dal.NewDAL(dbUrl)
 	if err != nil {
 		return fmt.Errorf("NewDAL err: %w", err)
 	}
 
-	var c *config.ChainConfig
-	err = viper.UnmarshalKey(config.KeyChain, c)
+	var c config.ChainConfig
+	err = viper.UnmarshalKey(config.KeyChain, &c)
 	if err != nil {
 		return fmt.Errorf("UnmarshalKey err: %w", err)
 	}
 
-	chainClient, err := onchain.NewChainClient(c, db)
+	chainClient, err := onchain.NewChainClient(&c, db)
 	if err != nil {
 		return fmt.Errorf("NewChainClient err: %w", err)
 	}
 	chainClient.StartMon()
+	chainClient.StartRefreshOnchainParamsJob()
 
 	proverUrl := viper.GetString(config.KeyProverUrl)
 	proverClient, err := client.NewProverNetworkClient(proverUrl)
@@ -53,6 +57,10 @@ func Start() error {
 		return fmt.Errorf("NewScheduler err: %w", err)
 	}
 	scheduler.Start()
+
+	stopCtx, done := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer done()
+	<-stopCtx.Done()
 
 	return nil
 }

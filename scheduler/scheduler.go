@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"math/rand"
-	"strings"
+	"net/http"
 	"time"
 
 	"github.com/brevis-network/prover-network-bidder/client"
@@ -28,12 +28,12 @@ type Scheduler struct {
 }
 
 func NewScheduler(db *dal.DAL, c *onchain.ChainClient, p *client.ProverNetworkClient) (*Scheduler, error) {
-	var ruleConfig *config.RuleConfig
-	err := viper.UnmarshalKey(config.KeyRule, c)
+	var ruleConfig config.RuleConfig
+	err := viper.UnmarshalKey(config.KeyRule, &ruleConfig)
 	if err != nil {
 		return nil, fmt.Errorf("UnmarshalKey err: %w", err)
 	}
-	return &Scheduler{db, c, p, ruleConfig}, nil
+	return &Scheduler{db, c, p, &ruleConfig}, nil
 }
 
 func (s *Scheduler) Start() {
@@ -63,15 +63,30 @@ func (s *Scheduler) scheduleAppRegister() {
 				continue
 			}
 
-			err = s.RegisterApp(app.AppID, "", elf)
+			log.Infof("Start register app %s...", app.AppID)
+			retAppId, err := s.RegisterApp("", elf)
 			if err != nil {
 				log.Errorf("RegisterApp %s err: %s", app.AppID, err)
 				continue
 			}
+			log.Infof("End register app %s", app.AppID)
 
-			err = s.UpdateAppAsRegistered(context.Background(), app.AppID)
+			if retAppId != app.AppID {
+				errMsg := fmt.Sprintf("calc appId %s does not match request appId %s", retAppId, app.AppID)
+				log.Errorln(errMsg)
+				err = s.UpdateAppAsRegisterFailed(context.Background(), dal.UpdateAppAsRegisterFailedParams{
+					AppID:         app.AppID,
+					RegisterError: errMsg,
+				})
+				if err != nil {
+					log.Errorf("UpdateAppAsRegisterFailed %s err: %s", app.AppID, err)
+				}
+				continue
+			}
+
+			err = s.UpdateAppAsRegisterSuccess(context.Background(), app.AppID)
 			if err != nil {
-				log.Errorf("UpdateAppAsRegistered %s err: %s", app.AppID, err)
+				log.Errorf("UpdateAppAsRegisterSuccess %s err: %s", app.AppID, err)
 				continue
 			}
 		}
@@ -87,6 +102,18 @@ func (s *Scheduler) scheduleBid() {
 			continue
 		}
 		for _, req := range reqs {
+			if req.InputData == "" {
+				ok, err := checkInputSize(req.InputUrl, s.ruleConfig.MaxInputSize)
+				if err != nil {
+					log.Errorf("checkInputSize for req %s err: %s", req.ReqID, err)
+					continue
+				}
+				if !ok { // input too large
+					log.Infof("skip req %s due to input exceeds max size", req.ReqID)
+					s.UpdateRequestAsProcessed(context.Background(), req.ReqID)
+					continue
+				}
+			}
 			// TODO: get inputs from req.InputData or req.InputUrl
 			inputs, err := retrieveInputs(req.InputData, req.InputUrl)
 			if err != nil {
@@ -94,7 +121,7 @@ func (s *Scheduler) scheduleBid() {
 				continue
 			}
 
-			cost, pvDigest, err := s.EstimateCost(req.AppID, inputs)
+			proverGas, pvDigest, err := s.EstimateCost(req.AppID, inputs)
 			if err != nil {
 				log.Errorf("EstimateCost %s err: %s", req.ReqID, err)
 				continue
@@ -108,9 +135,8 @@ func (s *Scheduler) scheduleBid() {
 				continue
 			}
 
-			// compare cost to rule, demo logic, subject to be changed later
-			// TODO
-			myFee := big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(int64(cost)))
+			proverGasPrice, _ := big.NewInt(0).SetString(s.ruleConfig.ProverGasPrice, 0)
+			myFee := big.NewInt(0).Mul(proverGasPrice, big.NewInt(int64(proverGas)))
 			maxFee, _ := big.NewInt(0).SetString(s.ruleConfig.MaxFee, 0)
 
 			if myFee.Cmp(maxFee) == 1 {
@@ -135,11 +161,10 @@ func (s *Scheduler) scheduleBid() {
 				})
 			if err != nil {
 				log.Errorf("Bid err: %s", err)
-				if strings.Contains(err.Error(), "bidding phase ended") || strings.Contains(err.Error(), "request does not exist") {
-					err = s.UpdateRequestAsProcessed(context.Background(), req.ReqID)
-					if err != nil {
-						log.Errorf("UpdateRequestAsProcessed %s err: %s", req.ReqID, err)
-					}
+				// TODO: decode solidity custom error, and then decide whether to mark the request as processed
+				err = s.UpdateRequestAsProcessed(context.Background(), req.ReqID)
+				if err != nil {
+					log.Errorf("UpdateRequestAsProcessed %s err: %s", req.ReqID, err)
 				}
 				continue
 			}
@@ -165,20 +190,39 @@ func (s *Scheduler) scheduleBid() {
 	}
 }
 
-func retrieveInputs(inputData string, inputUrl string) ([][]byte, error) {
-	var inputs [][]byte
+// HEAD for content length, if larger than maxSize, return false
+// otherwise return true. any http error will be false
+// if maxSize is 0, return true, nil directly
+func checkInputSize(inputUrl string, maxSize uint64) (bool, error) {
+	if maxSize == 0 {
+		return true, nil // 0 means no cap
+	}
+	resp, err := http.Head(inputUrl)
+	if err != nil {
+		return false, fmt.Errorf("http HEAD %s err: %w", inputUrl, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return false, fmt.Errorf("http HEAD %s unexpected status code: %d", inputUrl, resp.StatusCode)
+	}
+	if resp.ContentLength > int64(maxSize) {
+		return false, nil // too large
+	}
+	return true, nil
+}
+
+func retrieveInputs(inputData string, inputUrl string) ([]byte, error) {
+	var inputs []byte
 	if inputData != "" {
-		inputHexes := strings.Split(inputData, ",")
-		for _, hex := range inputHexes {
-			inputs = append(inputs, common.Hex2Bytes(hex))
-		}
+		inputs = common.Hex2Bytes(inputData)
 	} else {
 		// assume HTTP GET to downlaod
-		input, err := DownloadFile(inputUrl)
+		inputFromFile, err := DownloadFile(inputUrl)
 		if err != nil {
 			return nil, err
 		}
-		inputs = [][]byte{input}
+		inputs = inputFromFile
 	}
 
 	return inputs, nil
@@ -236,7 +280,7 @@ func (s *Scheduler) scheduleQueryBidResult() {
 			}
 
 			result := Fail
-			if reqState.Bidder0.Prover == common.HexToAddress(s.BidderEthAddr) {
+			if reqState.Winner.Prover == common.HexToAddress(s.ProverEthAddr) {
 				result = Success
 			}
 			err = s.UpdateBidResult(context.Background(), dal.UpdateBidResultParams{
@@ -304,6 +348,10 @@ func (s *Scheduler) scheduleQueryProvingResult() {
 				log.Errorf("GetProvingResult %s err: %s", bid.ReqID, err)
 				continue
 			}
+			if len(proof) == 0 {
+				log.Infof("GetProvingResult %s proof not generated yet", bid.ReqID)
+				continue
+			}
 			err = s.UpdateBidWithProof(context.Background(), dal.UpdateBidWithProofParams{
 				Proof: common.Bytes2Hex(proof),
 				ReqID: bid.ReqID,
@@ -326,11 +374,11 @@ func (s *Scheduler) scheduleSubmitProof() {
 		for _, bid := range bids {
 			var proof [8]*big.Int
 			proofBytes := common.Hex2Bytes(bid.Proof)
-			if len(proofBytes) != 8*32 {
+			if len(proofBytes) != 10*32 /*first 8 as proof and last 2 as inputs*/ {
 				log.Errorf("invalid proof length, reqId %s", bid.ReqID)
 				continue
 			}
-			for i := 0; i < 8; i++ {
+			for i := 0; i < 8; i++ /*first 8 needed only*/ {
 				proof[i] = big.NewInt(0).SetBytes(proofBytes[32*i : 32*(i+1)])
 			}
 			tx, _, err := onchain.TransactWaitSuccess(

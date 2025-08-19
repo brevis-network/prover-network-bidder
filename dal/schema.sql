@@ -7,7 +7,8 @@ SET DATABASE TO bidder;
 CREATE TABLE IF NOT EXISTS app (
     app_id TEXT NOT NULL, -- hex of vk, bytes32
     img_url TEXT NOT NULL,
-    registered BOOLEAN NOT NULL DEFAULT FALSE,
+    register_status TEXT NOT NULL DEFAULT '',
+    register_error TEXT NOT NULL DEFAULT '',
     PRIMARY KEY (app_id)
 );
 

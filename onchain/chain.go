@@ -43,12 +43,9 @@ func NewChainClient(c *config.ChainConfig, db *dal.DAL) (*ChainClient, error) {
 		return nil, fmt.Errorf("chainid mismatch! cfg has %d but onchain has %d", c.ChainID, chid.Uint64())
 	}
 
-	auth, addr, err := CreateTransactOpts(c.BidderEthAddr, c.BidderKeystore, chid)
+	auth, _, err := CreateTransactOpts(c.SubmitterKeystore, c.SubmitterPassphrase, chid)
 	if err != nil {
 		return nil, fmt.Errorf("CreateTransactOpts err: %w", err)
-	}
-	if addr != common.HexToAddress(c.BidderEthAddr) {
-		return nil, fmt.Errorf("bidder eth addr mismatch! cfg as %s but %s from keystore", c.BidderEthAddr, addr.String())
 	}
 	mon, err := mon2.NewMonitor(ec, db, mon2.PerChainCfg{
 		BlkIntv:         time.Duration(c.BlkInterval) * time.Second,
@@ -79,6 +76,26 @@ func NewChainClient(c *config.ChainConfig, db *dal.DAL) (*ChainClient, error) {
 // funcs for monitor brevis events
 func (c *ChainClient) StartMon() {
 	c.monMarket()
+}
+
+func (c *ChainClient) StartRefreshOnchainParamsJob() {
+	go func() {
+		for {
+			time.Sleep(10 * time.Minute)
+			biddingPhaseDuration, err := c.BrevisMarket.BiddingPhaseDuration(nil)
+			if err != nil {
+				log.Errorf("failed to refresh biddingPhaseDuration, err %s", err)
+				continue
+			}
+			revealPhaseDuration, err := c.BrevisMarket.RevealPhaseDuration(nil)
+			if err != nil {
+				log.Errorf("failed to refresh revealPhaseDuration, err %s", err)
+				continue
+			}
+			c.BiddingPhaseDuration = biddingPhaseDuration
+			c.RevealPhaseDuration = revealPhaseDuration
+		}
+	}()
 }
 
 func (c *ChainClient) monMarket() {
@@ -112,19 +129,15 @@ func (c *ChainClient) handleNewRequest(eLog ethtypes.Log) {
 	log.Infof("MonEv -  NewRequest: reqId %x, req %+v", ev.Reqid, ev.Req)
 
 	err = c.SaveApp(context.Background(), dal.SaveAppParams{
-		AppID:      common.Bytes2Hex(ev.Req.Vk[:]),
-		ImgUrl:     ev.Req.ImgURL,
-		Registered: false,
+		AppID:  common.Bytes2Hex(ev.Req.Vk[:]),
+		ImgUrl: ev.Req.ImgURL,
 	})
 	if err != nil {
 		log.Errorf("SaveApp err %s, reqId %x, req %+v", err, ev.Reqid, ev.Req)
 		// continue to save proof request, in case app can be saved by other req or manually
 	}
 
-	inputData := ""
-	for _, i := range ev.Req.InputData {
-		inputData += inputData + common.Bytes2Hex(i) + ","
-	}
+	inputData := common.Bytes2Hex(ev.Req.InputData)
 
 	header, err := c.HeaderByNumber(context.Background(), big.NewInt(int64(eLog.BlockNumber)))
 	if err != nil {

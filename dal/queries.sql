@@ -1,6 +1,6 @@
 -- name: SaveApp :exec
-INSERT INTO app (app_id, img_url, registered)
-VALUES ($1, $2, $3) ON CONFLICT DO NOTHING;
+INSERT INTO app (app_id, img_url, register_status, register_error)
+VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING;
 
 -- name: AddProofRequest :exec
 INSERT INTO proof_request (req_id, app_id, nonce, public_values_digest, input_data, input_url, max_fee, min_stake, deadline, created_at, processed)
@@ -17,20 +17,26 @@ VALUES ($1, $2, $3, $4) ON CONFLICT (event) DO
 UPDATE
 SET block_num = excluded.block_num,
     block_idx = excluded.block_idx,
-    restart = restart;
+    restart = excluded.restart;
 
 -- name: FindNotRegisteredApps :many
 SELECT * FROM app
-WHERE registered = false;
+WHERE register_status = '';
 
--- name: UpdateAppAsRegistered :exec
+-- name: UpdateAppAsRegisterSuccess :exec
 UPDATE app
-SET registered = true
+SET register_status = 'success'
+WHERE app_id = $1;
+
+-- name: UpdateAppAsRegisterFailed :exec
+UPDATE app
+SET register_status = 'failed', register_error = $2
 WHERE app_id = $1;
 
 -- name: FindNotProcessedProofRequests :many
-SELECT * FROM proof_request
-WHERE processed = false;
+SELECT p.* FROM proof_request p
+INNER JOIN app a ON p.app_id = a.app_id
+WHERE p.processed = false AND a.register_status = 'success';
 
 -- name: UpdateRequestAsProcessed :exec
 UPDATE proof_request
@@ -68,7 +74,7 @@ AND p.deadline > $1;
 
 -- name: UpdateBidProofTaskId :exec
 UPDATE my_bid
-SET proof_task_id = $1 AND proof_state = 'init'
+SET proof_task_id = $1, proof_state = 'init'
 WHERE req_id = $2;
 
 -- name: FindBidsToQueryProvingResult :many
@@ -79,7 +85,7 @@ WHERE proof_state = 'init';
 
 -- name: UpdateBidWithProof :exec
 UPDATE my_bid
-SET proof = $1 AND proof_state = 'generated'
+SET proof = $1, proof_state = 'generated'
 WHERE req_id = $2;
 
 -- name: FindBidsToSubmitProof :many
@@ -88,5 +94,5 @@ WHERE proof_state = 'generated';
 
 -- name: UpdateBidAsProofSubmitted :exec
 UPDATE my_bid
-SET proof_state = 'submitted' AND proof_submit_tx = $1
+SET proof_state = 'submitted', proof_submit_tx = $1
 WHERE req_id = $2;

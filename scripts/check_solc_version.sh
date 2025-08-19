@@ -1,6 +1,6 @@
 #!/bin/sh
 
-expected=0.8.20+commit.a1b79de6
+expected=0.8.29+commit.ab55807c
 
 check_solc_version() {
   version=$(solc --version | tail -n 1)
