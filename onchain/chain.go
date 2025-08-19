@@ -43,7 +43,7 @@ func NewChainClient(c *config.ChainConfig, db *dal.DAL) (*ChainClient, error) {
 		return nil, fmt.Errorf("chainid mismatch! cfg has %d but onchain has %d", c.ChainID, chid.Uint64())
 	}
 
-	auth, addr, err := CreateTransactOpts(c.BidderEthAddr, c.BidderKeystore, chid)
+	auth, addr, err := CreateTransactOpts(c.BidderKeystore, c.BidderPassphrase, chid)
 	if err != nil {
 		return nil, fmt.Errorf("CreateTransactOpts err: %w", err)
 	}

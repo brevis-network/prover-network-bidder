@@ -1,5 +1,5 @@
 [global]
-db_name="bidder"
+db_url="localhost:26257/bidder"
 prover_url="34.210.23.80:50052"
 
 [chain]
@@ -11,8 +11,8 @@ max_blk_delta=5000
 forward_blk_delay=500
 brevis_market_addr="0xef1B4B164Fd3b7933bfaDb042373560e715Ec5D6"
 bidder_eth_addr="0x58b529F9084D7eAA598EB3477Fe36064C5B7bbC1"
-bidder_keystore="./.bidder/eth-ks/bidder.json"
-bidder_passphrase=""
+bidder_keystore="/Users/hezhihua/Desktop/goerlideploy.json"
+bidder_passphrase="12341234"
 
 [rule]
-max_fee=1000000000000000000000000000000000
+max_fee="1000000000000000000000000000000000"

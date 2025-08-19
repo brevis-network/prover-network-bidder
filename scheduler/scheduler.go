@@ -28,12 +28,12 @@ type Scheduler struct {
 }
 
 func NewScheduler(db *dal.DAL, c *onchain.ChainClient, p *client.ProverNetworkClient) (*Scheduler, error) {
-	var ruleConfig *config.RuleConfig
-	err := viper.UnmarshalKey(config.KeyRule, c)
+	var ruleConfig config.RuleConfig
+	err := viper.UnmarshalKey(config.KeyRule, &ruleConfig)
 	if err != nil {
 		return nil, fmt.Errorf("UnmarshalKey err: %w", err)
 	}
-	return &Scheduler{db, c, p, ruleConfig}, nil
+	return &Scheduler{db, c, p, &ruleConfig}, nil
 }
 
 func (s *Scheduler) Start() {
