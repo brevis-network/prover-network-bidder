@@ -110,7 +110,7 @@ func (s *Scheduler) scheduleBid() {
 
 			// compare cost to rule, demo logic, subject to be changed later
 			// TODO
-			myFee := big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(int64(cost)))
+			myFee := big.NewInt(0).Mul(big.NewInt(1e1), big.NewInt(int64(cost)))
 			maxFee, _ := big.NewInt(0).SetString(s.ruleConfig.MaxFee, 0)
 
 			if myFee.Cmp(maxFee) == 1 {
