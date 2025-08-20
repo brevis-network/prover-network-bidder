@@ -1,8 +1,5 @@
 syntax = "proto3";
 
-import "google/protobuf/duration.proto";
-import "google/protobuf/empty.proto";
-
 package prover_network;
 
 option go_package = "github.com/brevis-network/prover-network-gateway/client/serviceapi";
@@ -64,7 +61,7 @@ message EstimateCostResponse {
   // common result
   ErrMsg err = 1;
   // gas cost
-  uint32 cost = 2;
+  uint64 cost = 2;
   // public values digest
   bytes pv_digest = 3;
 }

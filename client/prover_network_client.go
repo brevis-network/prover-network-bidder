@@ -42,7 +42,7 @@ func (c *ProverNetworkClient) RegisterApp(appId, info string, elf []byte) error 
 	return nil
 }
 
-func (c *ProverNetworkClient) EstimateCost(appId string, inputs [][]byte) (cost uint32, pvDigest []byte, err error) {
+func (c *ProverNetworkClient) EstimateCost(appId string, inputs [][]byte) (cost uint64, pvDigest []byte, err error) {
 	resp, err := serviceapi.NewProverNetworkClient(c.conn).EstimateCost(context.Background(), &serviceapi.EstimateCostRequest{
 		AppId:  appId,
 		Inputs: inputs,
