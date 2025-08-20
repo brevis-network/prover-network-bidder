@@ -68,7 +68,7 @@ AND p.deadline > $1;
 
 -- name: UpdateBidProofTaskId :exec
 UPDATE my_bid
-SET proof_task_id = $1 AND proof_state = 'init'
+SET proof_task_id = $1, proof_state = 'init'
 WHERE req_id = $2;
 
 -- name: FindBidsToQueryProvingResult :many
@@ -79,7 +79,7 @@ WHERE proof_state = 'init';
 
 -- name: UpdateBidWithProof :exec
 UPDATE my_bid
-SET proof = $1 AND proof_state = 'generated'
+SET proof = $1, proof_state = 'generated'
 WHERE req_id = $2;
 
 -- name: FindBidsToSubmitProof :many
@@ -88,5 +88,5 @@ WHERE proof_state = 'generated';
 
 -- name: UpdateBidAsProofSubmitted :exec
 UPDATE my_bid
-SET proof_state = 'submitted' AND proof_submit_tx = $1
+SET proof_state = 'submitted', proof_submit_tx = $1
 WHERE req_id = $2;

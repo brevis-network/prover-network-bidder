@@ -425,7 +425,7 @@ func (q *Queries) UpdateAppAsRegistered(ctx context.Context, appID string) error
 
 const updateBidAsProofSubmitted = `-- name: UpdateBidAsProofSubmitted :exec
 UPDATE my_bid
-SET proof_state = 'submitted' AND proof_submit_tx = $1
+SET proof_state = 'submitted', proof_submit_tx = $1
 WHERE req_id = $2
 `
 
@@ -452,7 +452,7 @@ func (q *Queries) UpdateBidAsRevealed(ctx context.Context, reqID string) error {
 
 const updateBidProofTaskId = `-- name: UpdateBidProofTaskId :exec
 UPDATE my_bid
-SET proof_task_id = $1 AND proof_state = 'init'
+SET proof_task_id = $1, proof_state = 'init'
 WHERE req_id = $2
 `
 
@@ -484,7 +484,7 @@ func (q *Queries) UpdateBidResult(ctx context.Context, arg UpdateBidResultParams
 
 const updateBidWithProof = `-- name: UpdateBidWithProof :exec
 UPDATE my_bid
-SET proof = $1 AND proof_state = 'generated'
+SET proof = $1, proof_state = 'generated'
 WHERE req_id = $2
 `
 
