@@ -1,6 +1,6 @@
 [global]
 db_url="localhost:26257/bidder"
-prover_url="34.210.23.80:50052"
+prover_url="54.244.25.10:50052"
 
 [chain]
 chain_id=421614
