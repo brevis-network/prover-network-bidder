@@ -135,11 +135,10 @@ func (s *Scheduler) scheduleBid() {
 				})
 			if err != nil {
 				log.Errorf("Bid err: %s", err)
-				if strings.Contains(err.Error(), "bidding phase ended") || strings.Contains(err.Error(), "request does not exist") {
-					err = s.UpdateRequestAsProcessed(context.Background(), req.ReqID)
-					if err != nil {
-						log.Errorf("UpdateRequestAsProcessed %s err: %s", req.ReqID, err)
-					}
+				// TODO: decode solidity custom error, and then decide whether to mark the request as processed
+				err = s.UpdateRequestAsProcessed(context.Background(), req.ReqID)
+				if err != nil {
+					log.Errorf("UpdateRequestAsProcessed %s err: %s", req.ReqID, err)
 				}
 				continue
 			}
@@ -236,7 +235,7 @@ func (s *Scheduler) scheduleQueryBidResult() {
 			}
 
 			result := Fail
-			if reqState.Bidder0.Prover == common.HexToAddress(s.BidderEthAddr) {
+			if reqState.Winner.Prover == common.HexToAddress(s.BidderEthAddr) {
 				result = Success
 			}
 			err = s.UpdateBidResult(context.Background(), dal.UpdateBidResultParams{

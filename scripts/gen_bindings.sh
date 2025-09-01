@@ -15,8 +15,9 @@ solc --overwrite --optimize --via-ir --pretty-json \
   --combined-json abi,bin \
   --evm-version london \
   -o $contractroot/out \
-  'openzeppelin-v4/'=./lib/openzeppelin-v4/ \
-  $contractdir/BrevisMarket.sol
+  '@openzeppelin/'=./lib/openzeppelin/ \
+  '@security/'=./lib/security/src/ \
+  $contractdir/market/BrevisMarket.sol
 
 echo "run abigen"
 abigen -combined-json $out/combined.json -pkg eth -out ../eth/bindings.go
