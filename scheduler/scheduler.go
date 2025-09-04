@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"math/rand"
+	"net/http"
 	"strings"
 	"time"
 
@@ -87,6 +88,18 @@ func (s *Scheduler) scheduleBid() {
 			continue
 		}
 		for _, req := range reqs {
+			if req.InputData == "" {
+				ok, err := checkInputSize(req.InputUrl, s.ruleConfig.MaxInputSize)
+				if err != nil {
+					log.Errorf("checkInputSize for req %s err: %s", req.ReqID, err)
+					continue
+				}
+				if !ok { // input too large
+					log.Infof("skip req %s due to input exceeds max size", req.ReqID)
+					s.UpdateRequestAsProcessed(context.Background(), req.ReqID)
+					continue
+				}
+			}
 			// TODO: get inputs from req.InputData or req.InputUrl
 			inputs, err := retrieveInputs(req.InputData, req.InputUrl)
 			if err != nil {
@@ -162,6 +175,28 @@ func (s *Scheduler) scheduleBid() {
 			}
 		}
 	}
+}
+
+// HEAD for content length, if larger than maxSize, return false
+// otherwise return true. any http error will be false
+// if maxSize is 0, return true, nil directly
+func checkInputSize(inputUrl string, maxSize uint64) (bool, error) {
+	if maxSize == 0 {
+		return true, nil // 0 means no cap
+	}
+	resp, err := http.Head(inputUrl)
+	if err != nil {
+		return false, fmt.Errorf("http HEAD %s err: %w", inputUrl, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return false, fmt.Errorf("http HEAD %s unexpected status code: %d", inputUrl, resp.StatusCode)
+	}
+	if resp.ContentLength > int64(maxSize) {
+		return false, nil // too large
+	}
+	return true, nil
 }
 
 func retrieveInputs(inputData string, inputUrl string) ([][]byte, error) {

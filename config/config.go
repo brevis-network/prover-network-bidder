@@ -17,4 +17,6 @@ type ChainConfig struct {
 // demo purpose, rule params to be determined by business
 type RuleConfig struct {
 	MaxFee string `mapstructure:"max_fee"`
+	// max input size,  default 0 means no limit. if this value is non-zero, and request input is larger, skip request.
+	MaxInputSize uint64 `mapstructure:"max_input_size"`
 }
