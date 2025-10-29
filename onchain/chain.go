@@ -115,7 +115,6 @@ func (c *ChainClient) marketCallback(evname string, elog ethtypes.Log) {
 	case "NewRequest":
 		c.handleNewRequest(elog)
 	default:
-		log.Infoln("unsupported evname: ", evname)
 		return
 	}
 }
