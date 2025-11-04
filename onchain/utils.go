@@ -34,7 +34,7 @@ func TransactWaitSuccess(
 	}
 	tx, err := backoff.Retry(context.Background(), op, backoff.WithBackOff(backoff.NewExponentialBackOff()))
 	if err != nil {
-		return nil, nil, fmt.Errorf("TransactWaitSuccess method err: %w", err)
+		return nil, nil, err
 	}
 	receipt, err := waitMinedTxSuccess(ec, tx)
 	if err != nil {
