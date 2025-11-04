@@ -172,6 +172,10 @@ func (s *Scheduler) scheduleBid() {
 				}
 				log.Errorf("Bid err: %s", errString)
 
+				abi, _ := eth.BrevisMarketMetaData.GetAbi()
+				calldata, _ := abi.Pack("bid", common.HexToHash(req.ReqID), common.BytesToHash(bidHash))
+				log.Infof("Bid calldata: %x", calldata)
+
 				if jsonErr.Data != "" /*not satisfy contract requirement*/ {
 					err = s.UpdateRequestAsProcessed(context.Background(), req.ReqID)
 					if err != nil {
