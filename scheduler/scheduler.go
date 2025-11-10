@@ -180,7 +180,7 @@ func (s *Scheduler) scheduleBid() {
 				continue
 			}
 			if common.BytesToHash(pvDigest) != common.HexToHash(req.PublicValuesDigest) {
-				log.Errorf("pvDigest not match, %x vs %s", pvDigest, req.PublicValuesDigest)
+				log.Errorf("req %s pvDigest not match, %x vs %s", req.ReqID, pvDigest, req.PublicValuesDigest)
 				err = s.UpdateRequestAsProcessed(context.Background(), req.ReqID)
 				if err != nil {
 					log.Errorf("UpdateRequestAsProcessed %s err: %s", req.ReqID, err)
@@ -188,12 +188,13 @@ func (s *Scheduler) scheduleBid() {
 				continue
 			}
 
+			log.Infof("req %s prover gas %d", req.ReqID, proverGas)
 			proverGasPrice, _ := big.NewInt(0).SetString(s.ruleConfig.ProverGasPrice, 0)
 			myFee := big.NewInt(0).Mul(proverGasPrice, big.NewInt(int64(proverGas)))
 			maxFee, _ := big.NewInt(0).SetString(s.ruleConfig.MaxFee, 0)
 
 			if myFee.Cmp(maxFee) == 1 {
-				log.Infof("fee exceeds my rule, myFee %s, maxFee in rule %s", myFee.String(), maxFee.String())
+				log.Infof("req %s fee exceeds my rule, myFee %s, maxFee in rule %s", req.ReqID, myFee.String(), maxFee.String())
 				err = s.UpdateRequestAsProcessed(context.Background(), req.ReqID)
 				if err != nil {
 					log.Errorf("UpdateRequestAsProcessed %s err: %s", req.ReqID, err)
@@ -321,6 +322,13 @@ func (s *Scheduler) scheduleReveal() {
 					errString = errString + " - " + errName
 				}
 				log.Errorf("Reveal req %s err: %s", bid.ReqID, errString)
+
+				if jsonErr.Data != "" /*not satisfy contract requirement*/ {
+					err = s.UpdateBidAsRevealed(context.Background(), bid.ReqID)
+					if err != nil {
+						log.Errorf("UpdateBidAsRevealed %s err: %s", bid.ReqID, err)
+					}
+				}
 				continue
 			}
 			log.Infof("Reveal req %s tx %s", bid.ReqID, tx.Hash().Hex())
