@@ -49,7 +49,7 @@ VALUES ($1, $2, $3, $4, $5);
 
 -- name: FindToBeRevealedBid :many
 SELECT * FROM my_bid
-WHERE revealed = false AND ($1 BETWEEN should_reveal_after AND should_reveal_before);
+WHERE revealed = false AND ($1 > should_reveal_after AND $1 < should_reveal_before);
 
 -- name: UpdateBidAsRevealed :exec
 UPDATE my_bid

@@ -346,7 +346,7 @@ func (q *Queries) FindToBeProvedBids(ctx context.Context, deadline int64) ([]Fin
 
 const findToBeRevealedBid = `-- name: FindToBeRevealedBid :many
 SELECT req_id, my_fee, bid_nonce, should_reveal_after, should_reveal_before, revealed, bid_result, proof_task_id, proof_state, proof, proof_submit_tx FROM my_bid
-WHERE revealed = false AND ($1 BETWEEN should_reveal_after AND should_reveal_before)
+WHERE revealed = false AND ($1 > should_reveal_after AND $1 < should_reveal_before)
 `
 
 func (q *Queries) FindToBeRevealedBid(ctx context.Context, shouldRevealAfter int64) ([]MyBid, error) {
