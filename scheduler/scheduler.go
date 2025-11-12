@@ -64,6 +64,14 @@ func (s *Scheduler) scheduleAppRegister() {
 			elf, err := DownloadFile(app.ImgUrl)
 			if err != nil {
 				log.Errorf("app %s, download %s err: %s", app.AppID, app.ImgUrl, err)
+				// ignore any request failed to download file
+				err = s.UpdateAppAsRegisterFailed(context.Background(), dal.UpdateAppAsRegisterFailedParams{
+					AppID:         app.AppID,
+					RegisterError: err.Error(),
+				})
+				if err != nil {
+					log.Errorf("UpdateAppAsRegisterFailed %s err: %s", app.AppID, err)
+				}
 				continue
 			}
 
