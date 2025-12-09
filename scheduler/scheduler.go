@@ -355,13 +355,15 @@ func (s *Scheduler) scheduleReveal() {
 				var jsonErr JsonError
 				errJson, _ := json.Marshal(err)
 				json.Unmarshal(errJson, &jsonErr)
+				var errName string
 				if jsonErr.Data != "" && jsonErr.Data != "0x" {
-					errName, _ := ParseSolCustomErrorName(eth.IBrevisMarketABI, common.FromHex(jsonErr.Data))
+					errName, _ = ParseSolCustomErrorName(eth.IBrevisMarketABI, common.FromHex(jsonErr.Data))
 					errString = errString + " - " + errName
 				}
 				log.Errorf("Reveal req %s err: %s", bid.ReqID, errString)
 
-				if jsonErr.Data != "" && jsonErr.Data != "0x" /*not satisfy contract requirement*/ {
+				if jsonErr.Data != "" && jsonErr.Data != "0x" &&
+					errName != "MarketBiddingPhaseNotEnded" /*not satisfy contract requirement*/ {
 					err = s.UpdateBidAsRevealed(context.Background(), bid.ReqID)
 					if err != nil {
 						log.Errorf("UpdateBidAsRevealed %s err: %s", bid.ReqID, err)
