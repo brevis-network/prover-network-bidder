@@ -127,13 +127,35 @@ func (c *ChainClient) handleNewRequest(eLog ethtypes.Log) {
 	}
 	log.Infof("MonEv -  NewRequest: reqId %x, req %+v", ev.Reqid, ev.Req)
 
-	err = c.SaveApp(context.Background(), dal.SaveAppParams{
-		AppID:  common.Bytes2Hex(ev.Req.Vk[:]),
-		ImgUrl: ev.Req.ImgURL,
-	})
+	appId := common.Bytes2Hex(ev.Req.Vk[:])
+	app, err := c.GetApp(context.Background(), appId)
+	found, err := dal.ChkQueryRow(err)
 	if err != nil {
-		log.Errorf("SaveApp err %s, reqId %x, req %+v", err, ev.Reqid, ev.Req)
+		log.Errorf("GetApp err %s, appId %s", err, appId)
 		// continue to save proof request, in case app can be saved by other req or manually
+	} else {
+		if found {
+			// correct app imgUrl this time
+			if app.RegisterStatus == "failed" && app.ImgUrl != ev.Req.ImgURL {
+				err = c.UpdateAppImgUrlAndResetStatus(context.Background(), dal.UpdateAppImgUrlAndResetStatusParams{
+					AppID:  appId,
+					ImgUrl: ev.Req.ImgURL,
+				})
+				if err != nil {
+					log.Errorf("UpdateAppImgUrlAndResetStatus err %s, reqId %x, req %+v", err, ev.Reqid, ev.Req)
+					// continue to save proof request, in case app can be saved by other req or manually
+				}
+			}
+		} else {
+			err = c.SaveApp(context.Background(), dal.SaveAppParams{
+				AppID:  appId,
+				ImgUrl: ev.Req.ImgURL,
+			})
+			if err != nil {
+				log.Errorf("SaveApp err %s, reqId %x, req %+v", err, ev.Reqid, ev.Req)
+				// continue to save proof request, in case app can be saved by other req or manually
+			}
+		}
 	}
 
 	inputData := common.Bytes2Hex(ev.Req.InputData)

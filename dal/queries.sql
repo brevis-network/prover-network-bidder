@@ -101,3 +101,13 @@ WHERE proof_state = 'generated';
 UPDATE my_bid
 SET proof_state = 'submitted', proof_submit_tx = $1
 WHERE req_id = $2;
+
+-- name: GetApp :one
+SELECT *
+FROM app
+WHERE app_id = $1;
+
+-- name: UpdateAppImgUrlAndResetStatus :exec
+UPDATE app
+SET register_status = '', img_url = $2
+WHERE app_id = $1;

@@ -384,6 +384,24 @@ func (q *Queries) FindToBeRevealedBid(ctx context.Context, shouldRevealAfter int
 	return items, nil
 }
 
+const getApp = `-- name: GetApp :one
+SELECT app_id, img_url, register_status, register_error
+FROM app
+WHERE app_id = $1
+`
+
+func (q *Queries) GetApp(ctx context.Context, appID string) (App, error) {
+	row := q.db.QueryRowContext(ctx, getApp, appID)
+	var i App
+	err := row.Scan(
+		&i.AppID,
+		&i.ImgUrl,
+		&i.RegisterStatus,
+		&i.RegisterError,
+	)
+	return i, err
+}
+
 const resetAppAsNotRegister = `-- name: ResetAppAsNotRegister :exec
 UPDATE app
 SET register_status = ''
@@ -459,6 +477,22 @@ WHERE app_id = $1
 
 func (q *Queries) UpdateAppAsRegisterSuccess(ctx context.Context, appID string) error {
 	_, err := q.db.ExecContext(ctx, updateAppAsRegisterSuccess, appID)
+	return err
+}
+
+const updateAppImgUrlAndResetStatus = `-- name: UpdateAppImgUrlAndResetStatus :exec
+UPDATE app
+SET register_status = '', img_url = $2
+WHERE app_id = $1
+`
+
+type UpdateAppImgUrlAndResetStatusParams struct {
+	AppID  string `json:"app_id"`
+	ImgUrl string `json:"img_url"`
+}
+
+func (q *Queries) UpdateAppImgUrlAndResetStatus(ctx context.Context, arg UpdateAppImgUrlAndResetStatusParams) error {
+	_, err := q.db.ExecContext(ctx, updateAppImgUrlAndResetStatus, arg.AppID, arg.ImgUrl)
 	return err
 }
 
