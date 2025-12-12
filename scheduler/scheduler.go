@@ -192,7 +192,8 @@ func (s *Scheduler) scheduleBid() {
 			inputs, err := retrieveInputs(req.InputData, req.InputUrl)
 			if err != nil {
 				log.Errorf("retrieveInputs for req %s err: %s", req.ReqID, err)
-				if strings.Contains(err.Error(), "bad status code: 404") {
+				if strings.Contains(err.Error(), "bad status code: 404") ||
+					strings.Contains(err.Error(), "is empty") {
 					err = s.UpdateRequestAsProcessed(context.Background(), req.ReqID)
 					if err != nil {
 						log.Errorf("UpdateRequestAsProcessed %s err: %s", req.ReqID, err)

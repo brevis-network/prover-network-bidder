@@ -38,6 +38,10 @@ func DownloadFile(url string) ([]byte, error) {
 		return nil, fmt.Errorf("ReadAll err %s", err)
 	}
 
+	if len(bodyBytes) == 0 {
+		return nil, fmt.Errorf("file %s is empty", url)
+	}
+
 	return bodyBytes, nil
 }
 
