@@ -73,7 +73,7 @@ const findBidsToQueryProvingResult = `-- name: FindBidsToQueryProvingResult :man
 SELECT b.req_id, b.my_fee, b.bid_nonce, b.should_reveal_after, b.should_reveal_before, b.revealed, b.bid_result, b.proof_task_id, b.proof_state, b.proof, b.proof_submit_tx, p.app_id FROM my_bid b
 INNER JOIN proof_request p
 ON b.req_id = p.req_id
-WHERE proof_state = 'init'
+WHERE b.proof_state = 'init' AND p.deadline > CAST(now() as BIGINT)
 `
 
 type FindBidsToQueryProvingResultRow struct {
