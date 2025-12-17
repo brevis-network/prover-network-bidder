@@ -528,7 +528,7 @@ func (s *Scheduler) scheduleSubmitProof() {
 				}
 				log.Errorf("SubmitProof req %s err: %s", bid.ReqID, errString)
 
-				if errName == "MarketDeadlinePassed" {
+				if errName == "MarketDeadlinePassed" || errName == "MarketInvalidRequestStatus" {
 					err = s.UpdateBidAsProofSubmitted(context.Background(), dal.UpdateBidAsProofSubmittedParams{
 						ProofSubmitTx: "",
 						ReqID:         bid.ReqID,
