@@ -202,7 +202,9 @@ func (s *Scheduler) scheduleBid() {
 				continue
 			}
 
+			log.Infof("Start EstimateCost, app %s req %s", req.AppID, req.ReqID)
 			proverGas, pvDigest, errCode, err := s.EstimateCost(req.AppID, inputs)
+			log.Infof("End EstimateCost, app %s req %s", req.AppID, req.ReqID)
 			if err != nil {
 				log.Errorf("EstimateCost %s err: %s", req.ReqID, err)
 				if errCode == serviceapi.ErrCode_INPUT_EXCEEDED || strings.Contains(err.Error(), "panic during cost estimation") {
