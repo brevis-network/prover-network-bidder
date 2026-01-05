@@ -105,7 +105,7 @@ func (c *ChainClient) monMarket() {
 	}
 	go c.MonAddr(mon2.PerAddrCfg{
 		Addr:    brevisMarketAddr,
-		ChkIntv: 3 * time.Minute,
+		ChkIntv: 30 * time.Second,
 		AbiStr:  eth.BrevisMarketABI,
 	}, c.marketCallback)
 }
