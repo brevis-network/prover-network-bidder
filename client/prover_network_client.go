@@ -63,7 +63,7 @@ func (c *ProverNetworkClient) EstimateCost(appId string, inputs []byte) (cost ui
 }
 
 func (c *ProverNetworkClient) ProveTask(appId, taskId string, inputs []byte) error {
-	ctxWithTimeout, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	ctxWithTimeout, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 	resp, err := serviceapi.NewProverNetworkClient(c.conn).ProveTask(ctxWithTimeout, &serviceapi.ProveTaskRequest{
 		AppId:  appId,
