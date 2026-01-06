@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/brevis-network/prover-network-bidder/client/serviceapi"
 	"github.com/celer-network/goutils/log"
@@ -27,7 +28,9 @@ func NewProverNetworkClient(nodeUrl string) (*ProverNetworkClient, error) {
 }
 
 func (c *ProverNetworkClient) RegisterApp(info string, elf []byte) (string, error) {
-	resp, err := serviceapi.NewProverNetworkClient(c.conn).RegisterApp(context.Background(), &serviceapi.RegisterAppRequest{
+	ctxWithTimeout, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+	resp, err := serviceapi.NewProverNetworkClient(c.conn).RegisterApp(ctxWithTimeout, &serviceapi.RegisterAppRequest{
 		Elf:  elf,
 		Info: &info,
 	})
@@ -43,7 +46,9 @@ func (c *ProverNetworkClient) RegisterApp(info string, elf []byte) (string, erro
 }
 
 func (c *ProverNetworkClient) EstimateCost(appId string, inputs []byte) (cost uint64, pvDigest []byte, errCode serviceapi.ErrCode, err error) {
-	resp, err := serviceapi.NewProverNetworkClient(c.conn).EstimateCost(context.Background(), &serviceapi.EstimateCostRequest{
+	ctxWithTimeout, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+	resp, err := serviceapi.NewProverNetworkClient(c.conn).EstimateCost(ctxWithTimeout, &serviceapi.EstimateCostRequest{
 		AppId:  appId,
 		Inputs: inputs,
 	})
@@ -58,7 +63,9 @@ func (c *ProverNetworkClient) EstimateCost(appId string, inputs []byte) (cost ui
 }
 
 func (c *ProverNetworkClient) ProveTask(appId, taskId string, inputs []byte) error {
-	resp, err := serviceapi.NewProverNetworkClient(c.conn).ProveTask(context.Background(), &serviceapi.ProveTaskRequest{
+	ctxWithTimeout, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer cancel()
+	resp, err := serviceapi.NewProverNetworkClient(c.conn).ProveTask(ctxWithTimeout, &serviceapi.ProveTaskRequest{
 		AppId:  appId,
 		TaskId: taskId,
 		Inputs: inputs,
@@ -74,7 +81,9 @@ func (c *ProverNetworkClient) ProveTask(appId, taskId string, inputs []byte) err
 }
 
 func (c *ProverNetworkClient) GetProvingResult(appId, taskId string) (proof []byte, err error) {
-	resp, err := serviceapi.NewProverNetworkClient(c.conn).GetProvingResult(context.Background(), &serviceapi.GetProvingResultRequest{
+	ctxWithTimeout, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer cancel()
+	resp, err := serviceapi.NewProverNetworkClient(c.conn).GetProvingResult(ctxWithTimeout, &serviceapi.GetProvingResultRequest{
 		AppId:  appId,
 		TaskId: taskId,
 	})
