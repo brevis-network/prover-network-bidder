@@ -111,3 +111,14 @@ WHERE app_id = $1;
 UPDATE app
 SET register_status = '', img_url = $2
 WHERE app_id = $1;
+
+-- name: FindBidsToRefund :many
+SELECT b.*, p.app_id FROM my_bid b
+INNER JOIN proof_request p
+ON b.req_id = p.req_id
+WHERE b.proof_state = 'init' AND p.deadline < CAST(now() as BIGINT);
+
+-- name: UpdateBidAsRefunded :exec
+UPDATE my_bid
+SET proof_state = 'refunded'
+WHERE req_id = $1;

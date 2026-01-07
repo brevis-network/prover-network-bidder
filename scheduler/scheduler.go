@@ -49,6 +49,7 @@ func (s *Scheduler) Start() {
 	go s.scheduleProve()
 	go s.scheduleQueryProvingResult()
 	go s.scheduleSubmitProof()
+	go s.scheduleRefund()
 }
 
 func (s *Scheduler) scheduleAppRegister() {
@@ -530,7 +531,7 @@ func (s *Scheduler) scheduleSubmitProof() {
 				}
 				log.Errorf("SubmitProof req %s err: %s", bid.ReqID, errString)
 
-				if errName == "MarketDeadlinePassed" || errName == "MarketInvalidRequestStatus" || strings.Contains(errString, "tx failed") {
+				if strings.Contains(errString, "tx failed") {
 					err = s.UpdateBidAsProofSubmitted(context.Background(), dal.UpdateBidAsProofSubmittedParams{
 						ProofSubmitTx: "",
 						ReqID:         bid.ReqID,
@@ -548,6 +549,49 @@ func (s *Scheduler) scheduleSubmitProof() {
 			})
 			if err != nil {
 				log.Errorf("UpdateBidAsProofSubmitted %s err: %s", bid.ReqID, err)
+			}
+		}
+	}
+}
+
+func (s *Scheduler) scheduleRefund() {
+	for {
+		time.Sleep(5 * time.Minute)
+		bids, err := s.FindBidsToRefund(context.Background())
+		if err != nil {
+			log.Errorf("FindBidsToRefund err: %s", err)
+			continue
+		}
+		for _, bid := range bids {
+			tx, _, err := onchain.TransactWaitSuccess(
+				s.Client, s.TransactOpts,
+				func(transactor bind.ContractTransactor, opts *bind.TransactOpts) (*ethtypes.Transaction, error) {
+					return s.Refund(opts, common.HexToHash(bid.ReqID))
+				})
+			if err != nil {
+				errString := err.Error()
+				var jsonErr JsonError
+				errJson, _ := json.Marshal(err)
+				json.Unmarshal(errJson, &jsonErr)
+				var errName string
+				if jsonErr.Data != "" && jsonErr.Data != "0x" {
+					errName, _ = ParseSolCustomErrorName(eth.IBrevisMarketABI, common.FromHex(jsonErr.Data))
+					errString = errString + " - " + errName
+				}
+				log.Errorf("Refund req %s err: %s", bid.ReqID, errString)
+
+				if errName == "MarketInvalidRequestStatus" {
+					err = s.UpdateBidAsRefunded(context.Background(), bid.ReqID)
+					if err != nil {
+						log.Errorf("UpdateBidAsRefunded %s err: %s", bid.ReqID, err)
+					}
+				}
+				continue
+			}
+			log.Infof("Refund req %s tx %s", bid.ReqID, tx.Hash().Hex())
+			err = s.UpdateBidAsRefunded(context.Background(), bid.ReqID)
+			if err != nil {
+				log.Errorf("UpdateBidAsRefunded %s err: %s", bid.ReqID, err)
 			}
 		}
 	}
