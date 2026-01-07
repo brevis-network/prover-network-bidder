@@ -142,6 +142,15 @@ func (s *Scheduler) scheduleBid() {
 				continue
 			}
 
+			if req.CreatedAt+int64(s.BiddingPhaseDuration) <= time.Now().Unix() {
+				log.Infof("req %s bidding phase ends", req.ReqID)
+				err = s.UpdateRequestAsProcessed(context.Background(), req.ReqID)
+				if err != nil {
+					log.Errorf("UpdateRequestAsProcessed %s err: %s", req.ReqID, err)
+				}
+				continue
+			}
+
 			vk := common.HexToHash(req.AppID)
 			skip := false
 			for _, b := range s.ruleConfig.VkBlacklist {
